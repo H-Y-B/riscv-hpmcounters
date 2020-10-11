@@ -17,9 +17,12 @@
 // 100e6 cycles
 #define SLEEP_TIME_US (100000)
 
+
 // How many counters do we support? (change for your micro-architecture).
 #define NUM_COUNTERS (8)
-//#define NUM_COUNTERS (32) maximum amount of HPMs is 32
+//#define NUM_COUNTERS (32) maximum amount of HPMs is 32 最大32个
+
+
 typedef std::array<long, NUM_COUNTERS> snapshot_t;
 
 static char const*               counter_names[NUM_COUNTERS];
@@ -39,6 +42,7 @@ enum StatState
    MAX
 };
 
+//无用
 int bytes_added(int result)
 {
    if (result > 0) {
@@ -55,10 +59,21 @@ static int handle_stats(int enable)
    long tsc_start = read_csr_safe(cycle);
    long irt_start = read_csr_safe(instret);
 
-   sigset_t sig_set;
-   sigemptyset(&sig_set);
-   sigaddset(&sig_set, SIGTERM);
+   sigset_t sig_set;            //设置信号集参数
+   sigemptyset(&sig_set);       //将sig_set的信号集先清空
+   sigaddset(&sig_set, SIGTERM);//把SIGTERM加入到sig_set的信号集中，即该位设为1，堵塞。
 
+   /*sigprocmask函数提供屏蔽和解除屏蔽信号的功能
+      int sigprocmask(int how, const sigset_t *set, sigset_t *oldset);
+
+         其中参数 how可设置的参数为：SIG_BLOCK， SIG_UNBLOCK，SIG_SETMASK
+            
+         SIG_BLOCK：按照参数  set 提供的屏蔽字，屏蔽信号。并将原信号屏蔽保存到oldset中。
+           
+         SIG_UNBLOCK：按照参数  set 提供的屏蔽字进行信号的解除屏蔽。针对Set中的信号进行解屏。
+    
+         SIG_SETMASK: 按照参数  set 提供的信号设置重新设置系统信号设置。
+   */
    if (sigprocmask(SIG_BLOCK, &sig_set, NULL) < 0) {
       perror ("sigprocmask failed");
       return 1;
@@ -68,6 +83,8 @@ static int handle_stats(int enable)
 
    int i = 0;         
    snapshot_t snapshot;
+
+
 #define READ_CTR(name) do { \
       if (i < NUM_COUNTERS) { \
          long csr = read_csr_safe(name); \
@@ -146,12 +163,14 @@ static int handle_stats(int enable)
 static int handle_stats(int enable) { return 0; }
 #endif
  
-void sig_handler(int signum)
+void sig_handler(int signum)//结束 while (1)
 {
    handle_stats(FINISH);
    //printf("HPM Counters exiting, received handler: %d\n", signum);
    exit(0);
 }
+
+
 
 int main(int argc, char** argv)
 {
